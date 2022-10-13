@@ -2,7 +2,7 @@ const mongoose = require("mongoose")
 
 const UserSchema = mongoose.Schema({
     mobileNumber:{
-        type:String,
+        type:Number,
         required:true
     },
     MPin:{

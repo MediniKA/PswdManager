@@ -1,6 +1,10 @@
 const mongoose = require("mongoose")
 
 const SiteSchema = mongoose.Schema({
+    URL:{
+        type:String,
+        required:true
+    },
     SiteName:{
         type:String,
         required:true
@@ -9,8 +13,10 @@ const SiteSchema = mongoose.Schema({
         type:String,
         required:true,  
     },
-    UserName:{
-        type:String,
+    
+    userId:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"User",
         required:true,  
     },
     Password:{
