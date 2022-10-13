@@ -5,6 +5,16 @@ const userRouter = require('./routes/userRoutes');
 const url = 'mongodb://localhost/PasswordManager'
 const app = express()
 
+app.use(express.json());
+
+app.use((req, res, next)=>{
+  console.log("HTTP Method - "+ req.method + ", URL -" +req.url)
+  next();
+})
+
+app.use("/users", userRouter)
+app.use("/sites", siteRouter)
+
 mongoose.connect(url, {useNewUrlParser:true})
 .then(() => {
     app.listen(9000, () => {
@@ -13,6 +23,5 @@ mongoose.connect(url, {useNewUrlParser:true})
   })
   .catch((e) => console.log(e));
 
-app.use("/users", userRouter)
-app.use("/sites", siteRouter)
+
 
