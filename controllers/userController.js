@@ -1,19 +1,25 @@
 const userModel = require("../models/userModel")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
-const SECRET_KEY = "SITESAPI"
+const dotenv = require("dotenv")
+dotenv.config()
+
+const SECRET_KEY = process.env.SECRET
 
 
 const signup = async(req,res) => {
     
     
-    const{ mobileNumber, MPin} = req.body;
+    const{ mobileNumber, MPin, reTypeMPin} = req.body;
     try{
         
         // Check Existing user
         const existingUser =await userModel.findOne({mobileNumber:mobileNumber});
         if(existingUser){
             return res.status(400).json({message: "User already exists"})
+        }
+        if(MPin!=reTypeMPin){
+            return res.status(400).json({message: "MPin and retype MPin not Match"})
         }
         
         //Hashed Password
@@ -26,8 +32,8 @@ const signup = async(req,res) => {
         })
 
         // Token Generation
-        const token = jwt.sign({mobileNumber:result.mobileNumber,id:result._id }, SECRET_KEY)
-        res.status(201).json({userModel:result,token:token})
+        // const token = jwt.sign({mobileNumber:result.mobileNumber,id:result._id }, SECRET_KEY)
+        res.status(201).json({userModel:result})
 
     }catch (error){
         console.log(error)
@@ -53,7 +59,7 @@ const signin = async(req,res) =>{
 
         // signin -token generation
         const token = jwt.sign({mobileNumber:existingUser.mobileNumber,id:existingUser._id }, SECRET_KEY)
-        res.status(201).json({userModel:existingUser,token:token})
+        res.status(200).json({userModel:existingUser,token:token})
 
     }catch (error){
         console.log(error)

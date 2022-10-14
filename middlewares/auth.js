@@ -1,5 +1,7 @@
 const jwt = require("jsonwebtoken")
-const SECRET_KEY = "SITESAPI"
+const dotenv = require("dotenv")
+dotenv.config()
+const SECRET_KEY = process.env.SECRET
 
 const auth = (req, res, next)=>{
 
@@ -12,7 +14,7 @@ const auth = (req, res, next)=>{
             req.userId = user.id;
         }
         else{
-            res.status(401).json({message: "Unauthorizes User"});
+            return res.status(401).json({message: "Unauthorizes User"});
         }
 
         next();
