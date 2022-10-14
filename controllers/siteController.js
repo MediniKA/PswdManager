@@ -1,12 +1,15 @@
 const { rawListeners } = require("../models/siteModel");
 const siteModel = require("../models/siteModel")
 const Cryptr = require('cryptr');
+const dotenv = require("dotenv")
+dotenv.config()
+const cryptr = new Cryptr(process.env.CRYTR_SECRET);
 
 
-
+// To Create New Site
 
 const createSite = async(req,res) =>{
-    const cryptr = new Cryptr(process.env.CRYTR_SECRET);
+
     // console.log(process.env.CRYTR_SECRET)
     const {URL,SiteName,Sector,userName,Password,notes} = req.body;
     const encryptedString = cryptr.encrypt(Password);
@@ -29,6 +32,7 @@ const createSite = async(req,res) =>{
     }
 }
 
+// to Update Site
 const updateSite = async(req,res) =>{
     const id = req.params.id;
     const {URL,SiteName,Sector,userName,Password,notes} = req.body;
@@ -52,6 +56,8 @@ const updateSite = async(req,res) =>{
     }
 }
 
+
+// to Delele Site
 const deleteSite = async(req,res) =>{
     const id = req.params.id;
     try{
@@ -63,6 +69,7 @@ const deleteSite = async(req,res) =>{
     }
 }
 
+// To Search Site
 const searchSite = async(req,res) =>{
 
     try{
@@ -82,7 +89,20 @@ const searchSite = async(req,res) =>{
 }
 
 
+// to copy Password
+const getPassword = async(req,res) =>{
+    const {URL} = req.body;
+    try{
+        const result = await siteModel.find({URL})
+        res.send(cryptr.decrypt(result[0].Password))
+    }catch(error){
+        console.log(error);
+        res.status(500).json({message:"Something went wrong"});
+    }
+}
 
+
+// To view ALL Site
 const getSites = async(req,res) =>{
 
     try{
@@ -98,5 +118,6 @@ module.exports = {
     updateSite,
     deleteSite,
     getSites,
-    searchSite
+    searchSite,
+    getPassword
 }
