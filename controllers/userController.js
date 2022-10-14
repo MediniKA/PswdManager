@@ -6,7 +6,7 @@ dotenv.config()
 
 const SECRET_KEY = process.env.SECRET
 
-
+// to SignUp
 const signup = async(req,res) => {
     
     
@@ -41,6 +41,8 @@ const signup = async(req,res) => {
     }
 }
 
+
+// to Signin
 const signin = async(req,res) =>{
     const{mobileNumber,MPin} = req.body;
     try{
@@ -67,4 +69,47 @@ const signin = async(req,res) =>{
     }
 }
 
+
+// forgot password
+
+
+
+const loginWithPhoneOtp = async (req, res, next) => {
+    try {
+  
+      const { phone } = req.body;
+      const user = await User.findOne({ phone });
+  
+      if (!user) {
+        next({ status: 400, message: PHONE_NOT_FOUND_ERR });
+        return;
+      }
+  
+      res.status(201).json({
+        type: "success",
+        message: "OTP sended to your registered phone number",
+        data: {
+          userId: user._id,
+        },
+      });
+  
+      // generate otp
+      const otp = generateOTP(6);
+      // save otp to user collection
+      user.phoneOtp = otp;
+      user.isAccountVerified = true;
+      await user.save();
+      // send otp to phone number
+      await fast2sms(
+        {
+          message: `Your OTP is ${otp}`,
+          contactNumber: user.phone,
+        },
+        next
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
+  
 module.exports = {signup, signin}
