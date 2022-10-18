@@ -64,7 +64,7 @@ const signin = async(req,res) =>{
         const token = jwt.sign({mobileNumber:existingUser.mobileNumber,id:existingUser._id }, SECRET_KEY,{expiresIn:'1h'})
         const refresh_token = jwt.sign({mobileNumber:existingUser.mobileNumber,id:existingUser._id }, REFRESH_TOKEN,{expiresIn:'1w'})
         refreshTokens.push(refresh_token)
-        res.status(200).json({userModel:existingUser,token:token,refresh_token})
+        res.status(200).json({userModel:existingUser,token:token})
 
     }catch (error){
         console.log(error)
