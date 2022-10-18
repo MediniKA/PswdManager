@@ -61,7 +61,7 @@ const signin = async(req,res) =>{
         }
 
         // signin -token generation
-        const token = jwt.sign({mobileNumber:existingUser.mobileNumber,id:existingUser._id }, SECRET_KEY,{expiresIn:'30s'})
+        const token = jwt.sign({mobileNumber:existingUser.mobileNumber,id:existingUser._id }, SECRET_KEY,{expiresIn:'1h'})
         const refresh_token = jwt.sign({mobileNumber:existingUser.mobileNumber,id:existingUser._id }, REFRESH_TOKEN,{expiresIn:'1w'})
         refreshTokens.push(refresh_token)
         res.status(200).json({userModel:existingUser,token:token,refresh_token})
@@ -73,8 +73,9 @@ const signin = async(req,res) =>{
 }
 
 
-app.post("/renewRefreshToken",(req,res) => {
-    const refreshToken = req.body.refreshToken
+const renewRefreshToken = async(req,res) => {
+    try {
+     const refreshToken = req.body.refreshToken
     if(!refreshToken || refreshTokens.includes(refreshToken)){
         res.status(403),json({message:"Unauthorized User"})
     }
@@ -86,6 +87,9 @@ app.post("/renewRefreshToken",(req,res) => {
             return res.status(404).json({message: "User not found"})
         }
     })
+} catch (error) {
+    next(error);
+  }
 }
 
 
