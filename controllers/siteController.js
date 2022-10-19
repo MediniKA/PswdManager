@@ -78,6 +78,7 @@ const searchSite = async(req,res) =>{
                 {SiteName:{$regex: req.body.text}},
                 {userName:{$regex: req.body.text}},
                 {notes:{$regex: req.body.text}},
+                {Sector:{$regex: req.body.text}},
             ]
     
         })

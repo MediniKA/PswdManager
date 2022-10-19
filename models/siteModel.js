@@ -11,7 +11,7 @@ const SiteSchema = mongoose.Schema({
     },
     Sector:{
         type:String,
-        enum:["Social Media", "Payment App", "entertainment"],
+        enum:["Social Media", "Payment App", "Entertainment"],
         required:true,  
     },
     userName:{
@@ -30,6 +30,6 @@ const SiteSchema = mongoose.Schema({
     notes:{
         type:String
     }
-},{timeStamp:true})
+},{timestamps:true})
 
 module.exports = mongoose.model("Site", SiteSchema)
