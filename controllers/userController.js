@@ -2,6 +2,7 @@ const userModel = require("../models/userModel")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
 const dotenv = require("dotenv")
+// const refreshtokenModel= require("../models/refreshTokenModel")
 dotenv.config()
 const refreshTokens=[]
 const SECRET_KEY = process.env.SECRET
@@ -67,7 +68,7 @@ const signin = async(req,res) =>{
         res.status(200).json({userModel:existingUser,token:token})
 
     }catch (error){
-        console.log(error)
+
         res.status(500).json({message:"Something went wrong"})
     }
 }
@@ -137,4 +138,18 @@ const loginWithPhoneOtp = async (req, res, next) => {
     }
   };
   
-module.exports = {signup, signin,}
+
+  // to logout
+const logout = async (req, res) => {
+const {token} = req.body
+  try{
+    // req.user.token=[]
+    jwt.destroy(token)
+    res.status(200).json({message:"Logout Succefully"})
+  }catch(error){
+    res.status(500).json({message:"Something went wrong"})
+  }
+}
+
+
+module.exports = {signup, signin,logout}
