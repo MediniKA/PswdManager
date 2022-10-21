@@ -73,7 +73,7 @@ const deleteSite = async(req,res) =>{
 const searchSite = async(req,res) =>{
 
     try{
-        const result = await siteModel.find({
+        const result = await siteModel.find({userId:req.userId,
             $or: [
                 {SiteName:{$regex: req.body.text}},
                 {userName:{$regex: req.body.text}},
