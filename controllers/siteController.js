@@ -22,6 +22,7 @@ const createSite = async(req,res) =>{
         notes:notes,
         userId:req.userId
     })
+    console.log(req.userId)
 
     try{
         await newSite.save();

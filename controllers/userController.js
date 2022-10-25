@@ -1,9 +1,12 @@
 const userModel = require("../models/userModel")
 const bcrypt = require("bcrypt")
+const speakeasy = require("speakeasy")
 const jwt = require("jsonwebtoken")
 const dotenv = require("dotenv")
-// const refreshtokenModel= require("../models/refreshTokenModel")
 dotenv.config()
+const refreshModel = require('../models/refreshTokenModel')
+const generateTokens = require("../utils/generateTokens");
+const verifyRefreshToken = require('../utils/verifyRefreshToken.js');
 const refreshTokens=[]
 const SECRET_KEY = process.env.SECRET
 const REFRESH_TOKEN = process.env.REFRESH_TOKEN
@@ -60,15 +63,21 @@ const signin = async(req,res) =>{
         if(!matchMPin){
             return res.status(400).json({message:"Invalid Credentials"})
         }
+      
 
         // signin -token generation
-        const token = jwt.sign({mobileNumber:existingUser.mobileNumber,id:existingUser._id }, SECRET_KEY,{expiresIn:'1h'})
-        const refresh_token = jwt.sign({mobileNumber:existingUser.mobileNumber,id:existingUser._id }, REFRESH_TOKEN,{expiresIn:'1w'})
-        refreshTokens.push(refresh_token)
-        res.status(200).json({userModel:existingUser,token:token})
+        // const token = jwt.sign({mobileNumber:existingUser.mobileNumber,id:existingUser._id }, SECRET_KEY,{expiresIn:'1h'})
+        // const refresh_token = jwt.sign({mobileNumber:existingUser.mobileNumber,id:existingUser._id }, REFRESH_TOKEN,{expiresIn:'1d'})
+        // // refreshTokens.push(refresh_token)
+        // const refreshTokens = new refreshModel({refresh_token,userId:existingUser._id}) 
+        // await refreshTokens.save()
+        const token =await generateTokens(existingUser) // function call to generate tokens 
+        // res.cookie("refreshToken",refresh_token,{httpOnly:true,maxAge:24 * 60 * 60 * 1000})
+        // res.status(200).json({userModel:existingUser,token:token})
+        res.status(200).json({userModel:existingUser,access_token:token})
 
     }catch (error){
-
+console.log(error)
         res.status(500).json({message:"Something went wrong"})
     }
 }
@@ -80,7 +89,7 @@ const renewRefreshToken = async(req,res) => {
     if(!refreshToken || refreshTokens.includes(refreshToken)){
         res.status(403),json({message:"Unauthorized User"})
     }
-    jwt.verify(refreshToken,"refresh",(err,user)=>{
+    jwt.verify(refreshToken,REFRESH_TOKEN,(err,user)=>{
         if(!err){
             const token = jwt.sign({mobileNumber:existingUser.mobileNumber,id:existingUser._id }, SECRET_KEY,{expiresIn:'30s'})
             return res.status(201).json({token})
@@ -95,61 +104,130 @@ const renewRefreshToken = async(req,res) => {
 
 
 
+async function GetNewAccessToken(req, res) {
+	try{
+		const response = await verifyRefreshToken(req.body.refreshToken).catch((err)=>res.send(err)) // if verification fails the return error response
+
+		const accessToken = jwt.sign(
+			{id: response.tokenDetails.id },
+			process.env.SECRET,
+			{ expiresIn: "20m" }
+		); 
+		res.status(200).json({
+			error: false,
+			accessToken,
+			message: "Access token created successfully",
+		});
+	}
+
+	catch{
+		((err) => res.status(400).json(err));
+	}
+};
 
 // forgot password
 
 
+// const getOtp=async(req, res) => {
+//   try {
+//     const secret = speakeasy.generateSecret({length: 10})
+//             res.send({
+//           "token": speakeasy.totp({
+//           secret: secret.base32,
+//           encoding: "base32",
+//           step: 60
+//       }),
+//       "secret":secret.base32,
+     
+//   })
+// }
+// catch (error) {
+    
+//     res.status(500).send(error)
+//      } 
+// } 
 
-const loginWithPhoneOtp = async (req, res, next) => {
-    try {
-  
-      const { phone } = req.body;
-      const user = await User.findOne({ phone });
-  
-      if (!user) {
-        next({ status: 400, message: PHONE_NOT_FOUND_ERR });
-        return;
-      }
-  
-      res.status(201).json({
-        type: "success",
-        message: "OTP sended to your registered phone number",
-        data: {
-          userId: user._id,
-        },
+// const verifyOtp = async(req, res) => {
+//   const otp = req.body.token;
+//   const mobileNumber=req.body.mobileNumber;
+//   const MPin = req.body.MPin
+//   const user =  userModel.findOne({mobileNumber:mobileNumber})
+//   const verfied = speakeasy.totp.verify({secret: req.body.secret, encoding: 'base32', token: otp,window:0,step:60});
+//   if(verfied){
+//           user.updateOne({mpinHash:MPin},(err,docs)=>{
+//              if(err){
+//                 return res.send(err)
+//              }
+//              res.send("mpin updated")
+//           })
+         
+//      }
+//   else{
+//       res.send("invalid otp")
+//   }
+// }
+const getOtp = async (req, res) => {
+  try {
+      const secret = speakeasy.generateSecret({ length: 10 });
+      res.send({
+          OTP: speakeasy.totp({
+              secret: secret.base32,
+              encoding: "base32",
+              step: 60,
+          }),
+          secret: secret.base32,
       });
-  
-      // generate otp
-      const otp = generateOTP(6);
-      // save otp to user collection
-      user.phoneOtp = otp;
-      user.isAccountVerified = true;
-      await user.save();
-      // send otp to phone number
-      await fast2sms(
-        {
-          message: `Your OTP is ${otp}`,
-          contactNumber: user.phone,
-        },
-        next
-      );
-    } catch (error) {
-      next(error);
-    }
-  };
-  
-
-  // to logout
-const logout = async (req, res) => {
-const {token} = req.body
-  try{
-    // req.user.token=[]
-    jwt.destroy(token)
-    res.status(200).json({message:"Logout Succefully"})
-  }catch(error){
-    res.status(500).json({message:"Something went wrong"})
+  } catch (err) {
+      res.json({ message: err.message });
   }
-}
+};
+
+//verification of number using speakeasy
+let verifyOtp = async (req, res, next) => {
+  try {
+      const result = speakeasy.totp.verify({
+          secret: req.body.secret,
+          encoding: "base32",
+          token: req.body.OTP,
+          window: 0,
+          step: 60,
+      });
+      if (result) {
+          // res.send({
+          //     message: "Verified",
+          // });
+          next();
+      } else {
+          res.json({ message: "Verification unsuccessful" });
+      }
+  } catch (err) {
+      res.json({ message: err.message });
+  }
+};
 
 
-module.exports = {signup, signin,logout}
+//logout function
+let logout = async (req, res) => {
+  try {
+      await User.findOneAndUpdate(
+          { mobileNumber: req.body.mobileNumber },
+          { loggedIn: false }
+      );
+      const userToken = await Token.findOne({
+          refresh_token: req.body.refresh_token,
+      }); // finding document with the matched refresh token
+      if (!userToken) {
+          return res.status(200).json({
+              error: false,
+              message: "You have logged out already!",
+          }); // if no user exists, by default return logged out
+      } else {
+          await userToken.remove();
+          res.json({ error: false, message: "Logged out successfully" });
+      }
+  } catch (err) {
+      res.json({ error: true, message: err.message });
+  }
+};
+
+module.exports = {signup, signin,logout,GetNewAccessToken,getOtp,verifyOtp}
