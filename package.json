@@ -17,7 +17,8 @@
     "fast-two-sms": "^3.0.0",
     "jsonwebtoken": "^8.5.1",
     "mongodb": "^4.10.0",
-    "mongoose": "^6.6.5"
+    "mongoose": "^6.6.5",
+    "speakeasy": "^2.0.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.20"
