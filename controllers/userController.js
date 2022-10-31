@@ -28,7 +28,8 @@ const signup = async(req,res) => {
         }
         
         //Hashed Password
-        const hashedMPin = await bcrypt.hash(MPin, 10);
+        const salt = await bcrypt.genSalt(parseInt(process.env.SALT_VALUE));
+        const hashedMPin = await bcrypt.hash(MPin, salt);
 
         //User Creation
         const result = await  userModel.create({
@@ -83,27 +84,6 @@ console.log(error)
 }
 
 
-const renewRefreshToken = async(req,res) => {
-    try {
-     const refreshToken = req.body.refreshToken
-    if(!refreshToken || refreshTokens.includes(refreshToken)){
-        res.status(403),json({message:"Unauthorized User"})
-    }
-    jwt.verify(refreshToken,REFRESH_TOKEN,(err,user)=>{
-        if(!err){
-            const token = jwt.sign({mobileNumber:existingUser.mobileNumber,id:existingUser._id }, SECRET_KEY,{expiresIn:'30s'})
-            return res.status(201).json({token})
-        }else{
-            return res.status(404).json({message: "User not found"})
-        }
-    })
-} catch (error) {
-    next(error);
-  }
-}
-
-
-
 async function GetNewAccessToken(req, res) {
 	try{
 		const response = await verifyRefreshToken(req.body.refreshToken).catch((err)=>res.send(err)) // if verification fails the return error response
@@ -125,47 +105,6 @@ async function GetNewAccessToken(req, res) {
 	}
 };
 
-// forgot password
-
-
-// const getOtp=async(req, res) => {
-//   try {
-//     const secret = speakeasy.generateSecret({length: 10})
-//             res.send({
-//           "token": speakeasy.totp({
-//           secret: secret.base32,
-//           encoding: "base32",
-//           step: 60
-//       }),
-//       "secret":secret.base32,
-     
-//   })
-// }
-// catch (error) {
-    
-//     res.status(500).send(error)
-//      } 
-// } 
-
-// const verifyOtp = async(req, res) => {
-//   const otp = req.body.token;
-//   const mobileNumber=req.body.mobileNumber;
-//   const MPin = req.body.MPin
-//   const user =  userModel.findOne({mobileNumber:mobileNumber})
-//   const verfied = speakeasy.totp.verify({secret: req.body.secret, encoding: 'base32', token: otp,window:0,step:60});
-//   if(verfied){
-//           user.updateOne({mpinHash:MPin},(err,docs)=>{
-//              if(err){
-//                 return res.send(err)
-//              }
-//              res.send("mpin updated")
-//           })
-         
-//      }
-//   else{
-//       res.send("invalid otp")
-//   }
-// }
 const getOtp = async (req, res) => {
   try {
       const secret = speakeasy.generateSecret({ length: 10 });
@@ -201,26 +140,98 @@ let verifyOtp = async (req, res, next) => {
           res.json({ message: "Verification unsuccessful" });
       }
   } catch (err) {
+    console.log(err)
       res.json({ message: err.message });
   }
 };
 
 
+//function to forgot password
+let forgotPassword = async (req, res) => {
+    try {
+        const MPinNew = req.body.newMPin
+        const salt = await bcrypt.genSalt(parseInt(process.env.SALT_VALUE));
+        const newMPin = await bcrypt.hash(MPinNew.toString(), salt);
+        console.log(newMPin)
+        await userModel.findOneAndUpdate(
+            { mobileNumber: req.body.mobileNumber },
+            { MPin: newMPin }
+        );
+        res.json({ message: "MPin changed successfully" });
+    } catch (err) {
+        console.log(err)
+        res.json({ message: err.message });
+    }
+};
+
+//password reset when logged in
+let resetPassword = async (req, res) => {
+    try {
+        const user = await userModel.findOne({userId:req.userId});
+        console.log(user)
+        const result = await bcrypt.compare(
+            req.body.MPin.toString(),
+            user.MPin
+        );
+
+        if (result) {
+            res.json({ message: "Your new mPin cannot be same as old!" });
+        } else {
+            const salt = await bcrypt.genSalt(parseInt(process.env.SALT_VALUE));
+            const newmPin = await bcrypt.hash(req.body.MPin.toString(), salt);
+            await userModel.findOneAndUpdate(
+                { id: req.userId },
+                { MPin: newmPin }
+            );
+            res.json({ message: "MPin changed successfully" });
+        }
+    } catch (error) {
+        console.log(error)
+        res.json({ message: error });
+    }
+};
+
+async function resetMPin(req,res){
+    if(typeof req.body.oldMPin!="number") return res.send("Enter a valid 4-digit old MPin")
+    if(typeof req.body.newMPin!="number") return res.send("Enter a valid 4-digit new MPin")
+    if(req.body.oldMPin==req.body.newMPin) return res.send("New MPin cannot be same as old MPin")
+    if(req.body.newMPin.toString().length!=4) return res.send("Enter a valid 4-digit new MPin")
+    if(req.body.oldMPin.toString().length!=4) return res.send("Enter a valid 4-digit old MPin")
+    const [userData] = await userModel.find({mobileNumber: req.User.mobileNumber}).clone()
+    console.log(userData)
+    try {
+        if(await bcrypt.compare(req.body.oldMPin.toString(), userData.MPin.toString())) { //compare MPin 
+            const salt = await bcrypt.genSalt(Number(process.env.SALT)); // salt generation
+            const hashedPassword = await bcrypt.hash(req.body.newMPin.toString(), salt) // bcrypting MPin
+            await userModel.findOneAndUpdate({ mobileNumber: req.existingUser.mobileNumber},{ MPin: hashedPassword },(err)=>{ //Update in database
+                if(err) return res.send(err)
+            }).clone();
+            res.status(200).send("MPin successfully Updated")
+        } 
+        else {
+            return res.status(401).send('Wrong Old MPin')
+        }
+    } 
+    catch(err) {
+        return res.status(500).send(err)
+    }
+}
+
 //logout function
 let logout = async (req, res) => {
   try {
-      await User.findOneAndUpdate(
+      await userModel.findOneAndUpdate(
           { mobileNumber: req.body.mobileNumber },
           { loggedIn: false }
       );
-      const userToken = await Token.findOne({
-          refresh_token: req.body.refresh_token,
-      }); // finding document with the matched refresh token
+      const userToken = await refreshModel.findOne({
+          refresh_token: req.body.refreshToken,
+      });                                       // finding document with the matched refresh token
       if (!userToken) {
           return res.status(200).json({
               error: false,
               message: "You have logged out already!",
-          }); // if no user exists, by default return logged out
+          });                                   // if no user exists, by default return logged out
       } else {
           await userToken.remove();
           res.json({ error: false, message: "Logged out successfully" });
@@ -230,4 +241,4 @@ let logout = async (req, res) => {
   }
 };
 
-module.exports = {signup, signin,logout,GetNewAccessToken,getOtp,verifyOtp}
+module.exports = {signup, signin,logout,GetNewAccessToken,getOtp,verifyOtp, forgotPassword,resetMPin, resetPassword}
