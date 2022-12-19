@@ -24,4 +24,4 @@ const generateTokens = async (existingUser) => {
 	}
 };
 
-module.exports = generateTokens;
+module.exports = generateTokens; 
